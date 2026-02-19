@@ -77,9 +77,6 @@ class AutomationApp:
         self._refresh_pattern_list()
         self._register_hotkeys()
 
-        # Check tap status after a brief delay
-        self.root.after(500, self._check_tap_status)
-
     # ──────────────────────────────────────────────────────────────
     # Styles
     # ──────────────────────────────────────────────────────────────
@@ -182,20 +179,6 @@ class AutomationApp:
             modifiers=stop.get("modifiers", 0),
         )
 
-    def _check_tap_status(self):
-        """Update accessibility banner based on actual tap status."""
-        tap_ok = self.kb_monitor.tap_created
-        if tap_ok:
-            self.lbl_banner.configure(
-                text="✅ 글로벌 단축키 활성화됨",
-                style="OkBanner.TLabel",
-            )
-        else:
-            self.lbl_banner.configure(
-                text="⚠️ 접근성 권한 필요 — 시스템 설정 > 접근성에서 Mac Auto에 권한을 허용하세요",
-                style="WarnBanner.TLabel",
-            )
-
     # ──────────────────────────────────────────────────────────────
     # UI construction
     # ──────────────────────────────────────────────────────────────
@@ -218,13 +201,6 @@ class AutomationApp:
             title_frame, text="⚙️ 단축키 설정",
             command=self._open_settings,
         ).pack(side=tk.RIGHT)
-
-        # ── Accessibility / tap status banner ──
-        self.lbl_banner = ttk.Label(
-            container, text="⏳ 글로벌 단축키 확인 중...",
-            style="OkBanner.TLabel", padding=(8, 4),
-        )
-        self.lbl_banner.pack(fill=tk.X, pady=(0, 8))
 
         # ── Recording card ──
         rec_card = ttk.Frame(container, style="Card.TFrame", padding=16)
@@ -365,6 +341,10 @@ class AutomationApp:
         # ── Status bar ──
         self.lbl_status = ttk.Label(container, text="준비됨", style="Status.TLabel")
         self.lbl_status.pack(fill=tk.X)
+
+        if not self.kb_monitor.tap_created:
+            self._set_status("⚠️ 경고: 접근성 권한이 없어 단축키가 동작하지 않습니다.")
+            self.lbl_status.configure(foreground=ORANGE)
 
     # ──────────────────────────────────────────────────────────────
     # Hotkeys
@@ -566,7 +546,7 @@ class SettingsDialog:
 
         # Create top-level window
         self.win = tk.Toplevel(parent)
-        self.win.title("⚙️ 단축키 설정")
+        self.win.title("단축키 설정")
         self.win.geometry("480x340")
         self.win.resizable(False, False)
         self.win.configure(bg=BG)
@@ -581,7 +561,7 @@ class SettingsDialog:
 
         # Title
         tk.Label(
-            frame, text="글로벌 단축키 설정", font=FONT_LG,
+            frame, text="단축키 설정", font=FONT_LG,
             bg=BG, fg=FG,
         ).pack(anchor=tk.W, pady=(0, 4))
 
@@ -667,10 +647,17 @@ class SettingsDialog:
 
     def _on_tk_keypress(self, event):
         """Handle tkinter KeyPress event for key capture."""
-        keycode = event.keycode
+        keysym = event.keysym
 
         # Skip modifier-only keys (Cmd, Shift, etc.)
-        if keycode in app_settings.MODIFIER_KEYCODES:
+        if keysym in app_settings.MODIFIER_KEYSYMS:
+            return
+
+        # Convert keysym → Quartz virtual keycode
+        keycode = app_settings.tk_keysym_to_quartz(keysym)
+        if keycode < 0:
+            # Unknown key — don't unbind, let user try again
+            self.lbl_capture.configure(text=f"⚠️ 지원하지 않는 키입니다: {keysym}")
             return
 
         # Convert tkinter state bits → Quartz modifier mask
@@ -692,7 +679,7 @@ class SettingsDialog:
             self.lbl_capture.configure(text="캡처 취소됨.")
             return
 
-        # Save the captured key
+        # Save the captured key (now using Quartz keycode)
         self._pending[action] = {"keycode": keycode, "modifiers": modifiers}
         display = app_settings.hotkey_display(keycode, modifiers)
         self._buttons[action].configure(text=display, fg=ACCENT)

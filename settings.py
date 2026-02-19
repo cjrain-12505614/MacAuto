@@ -85,6 +85,58 @@ def get_default_hotkeys() -> Dict[str, Dict[str, Any]]:
 # macOS modifier virtual keycodes (these are NOT regular keys)
 MODIFIER_KEYCODES = {54, 55, 56, 57, 58, 59, 60, 61, 62, 63}
 
+# tkinter modifier keysym names (skip these during key capture)
+MODIFIER_KEYSYMS = {
+    "Shift_L", "Shift_R", "Control_L", "Control_R",
+    "Meta_L", "Meta_R", "Alt_L", "Alt_R",
+    "Super_L", "Super_R", "Caps_Lock",
+}
+
+# tkinter event.keysym → Quartz virtual keycode
+KEYSYM_TO_QUARTZ: Dict[str, int] = {
+    # Letters
+    "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5,
+    "z": 6, "x": 7, "c": 8, "v": 9, "b": 11,
+    "q": 12, "w": 13, "e": 14, "r": 15, "y": 16, "t": 17,
+    "o": 31, "u": 32, "i": 34, "p": 35, "l": 37, "j": 38,
+    "k": 40, "n": 45, "m": 46,
+    # Numbers
+    "1": 18, "2": 19, "3": 20, "4": 21, "5": 23, "6": 22,
+    "7": 26, "8": 28, "9": 25, "0": 29,
+    # Symbols
+    "minus": 27, "equal": 24, "bracketleft": 33, "bracketright": 30,
+    "semicolon": 41, "quoteright": 39, "quoteleft": 50,
+    "apostrophe": 39, "grave": 50,
+    "backslash": 42, "comma": 43, "period": 47, "slash": 44,
+    # Special keys
+    "Return": 36, "Tab": 48, "space": 49, "BackSpace": 51,
+    "Escape": 53, "Delete": 117,
+    # Arrow keys
+    "Left": 123, "Right": 124, "Down": 125, "Up": 126,
+    # Navigation
+    "Home": 115, "End": 119, "Prior": 116, "Next": 121,  # PgUp/PgDn
+    # Function keys
+    "F1": 122, "F2": 120, "F3": 99, "F4": 118, "F5": 96,
+    "F6": 97, "F7": 98, "F8": 100, "F9": 101, "F10": 109,
+    "F11": 103, "F12": 111, "F13": 105, "F14": 107, "F15": 113,
+}
+
+
+def tk_keysym_to_quartz(keysym: str) -> int:
+    """
+    Convert a tkinter event.keysym string to a Quartz virtual keycode.
+    Returns -1 if the keysym is unknown.
+    """
+    # Try exact match first
+    code = KEYSYM_TO_QUARTZ.get(keysym)
+    if code is not None:
+        return code
+    # Try lowercase (tkinter sends uppercase for letters when Shift is held)
+    code = KEYSYM_TO_QUARTZ.get(keysym.lower())
+    if code is not None:
+        return code
+    return -1
+
 
 def tk_state_to_quartz_mods(tk_state: int) -> int:
     """

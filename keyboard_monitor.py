@@ -12,6 +12,17 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import Quartz
 
+import os
+import logging
+
+# Setup debug logging
+DEBUG_LOG = os.path.join(os.path.expanduser("~"), "mac_auto_debug.log")
+logging.basicConfig(
+    filename=DEBUG_LOG,
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # macOS virtual key-code → human-readable name
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -187,6 +198,9 @@ class KeyboardMonitor:
         active_mods = flags & _INTERESTING_MODIFIERS
 
         # Determine press vs release
+        logging.debug(f"Event: type={event_type}, keycode={keycode}, flags={flags}")
+
+
         if event_type == Quartz.kCGEventFlagsChanged:
             flag_mask = _MODIFIER_KEY_FLAGS.get(keycode)
             if flag_mask is not None:
@@ -250,6 +264,7 @@ class KeyboardMonitor:
         )
 
         if self._tap_port is None:
+            logging.error("CGEventTapCreate failed (requires Accessibility permissions).")
             print(
                 "⚠️  키보드 이벤트 탭 생성 실패.\n"
                 "   시스템 설정 > 개인정보 보호 및 보안 > 접근성 권한을 확인하세요."
@@ -259,6 +274,7 @@ class KeyboardMonitor:
             self._ready_event.set()
             return
 
+        logging.info("CGEventTap created successfully.")
         self.tap_created = True
         self._ready_event.set()
 

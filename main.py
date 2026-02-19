@@ -8,28 +8,47 @@ import os
 import tkinter as tk
 
 
-def request_accessibility():
-    """
-    Use AXIsProcessTrustedWithOptions to trigger the macOS system
-    accessibility permission prompt.  Returns True if already trusted.
-    """
-    if sys.platform != "darwin":
-        return True
+_PROMPT_MARKER = os.path.join(
+    os.path.expanduser("~"),
+    "Library", "Application Support", "Mac Auto", ".accessibility_prompted",
+)
+
+
+def _check_trusted(prompt: bool = False) -> bool:
+    """Check accessibility trust, optionally triggering the system prompt."""
     try:
         import HIServices
-        options = {HIServices.kAXTrustedCheckOptionPrompt: True}
-        return HIServices.AXIsProcessTrustedWithOptions(options)
+        opts = {HIServices.kAXTrustedCheckOptionPrompt: prompt}
+        return HIServices.AXIsProcessTrustedWithOptions(opts)
     except Exception:
-        # Fallback: try via ApplicationServices
         try:
             from ApplicationServices import (
                 AXIsProcessTrustedWithOptions,
                 kAXTrustedCheckOptionPrompt,
             )
-            options = {kAXTrustedCheckOptionPrompt: True}
-            return AXIsProcessTrustedWithOptions(options)
+            opts = {kAXTrustedCheckOptionPrompt: prompt}
+            return AXIsProcessTrustedWithOptions(opts)
         except Exception:
             return False
+
+
+def request_accessibility() -> bool:
+    """
+    Check macOS accessibility permission.
+    - If already trusted → return True (no dialog).
+    - If not trusted and first time → show system prompt once.
+    - If not trusted but already prompted → skip dialog, return False.
+    """
+    if sys.platform != "darwin":
+        return True
+
+    # Silent check first — no dialog
+    if _check_trusted(prompt=False):
+        return True
+
+    # Not trusted: always try to prompt
+    # (macOS will handle the frequency of the actual system dialog)
+    return _check_trusted(prompt=True)
 
 
 def main():
