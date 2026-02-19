@@ -1,0 +1,34 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Patterns (user data)
+patterns/
+
+# Virtual environments
+venv/
+.env/
+env/
+
+# py2app temp
+.eggs/
